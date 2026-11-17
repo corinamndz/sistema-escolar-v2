@@ -45,12 +45,22 @@ import WebsiteEditorPage from '../features/website/pages/WebsiteEditorPage';
 import PublicSitePage from '../features/website/pages/PublicSitePage';
 import PublicIntakePage from '../features/website/pages/PublicIntakePage';
 import PortalEventsPage from '../features/portal/pages/PortalEventsPage';
+import PortalLearningPage from '../features/learning/pages/PortalLearningPage';
+import StudentLearningPage from '../features/learning/pages/StudentLearningPage';
+import StudentModeShell from '../features/learning/StudentModeShell';
+import AcademicPage from '../features/portal/pages/AcademicPage';
+import AgendaPage from '../features/portal/pages/AgendaPage';
+import MorePage from '../features/portal/pages/MorePage';
+import ClassPage from '../features/teacher/pages/ClassPage';
+import { GradeInboxPage, PlanningPage, TeacherMorePage } from '../features/teacher/pages/TeacherPages';
 import SectionDetailPage from '../features/academics/pages/SectionDetailPage';
 import SubjectsPage from '../features/academics/subjects/SubjectsPage';
 import EvaluationPlansPage from '../features/evaluation-plans/pages/EvaluationPlansPage';
 import EvaluationPlanDetailPage from '../features/evaluation-plans/pages/EvaluationPlanDetailPage';
 import ProgrammaticContentPage from '../features/programmatic-content/pages/ProgrammaticContentPage';
 import GradebookPage from '../features/grading/pages/GradebookPage';
+import SubmissionsInboxPage from '../features/submissions/pages/SubmissionsInboxPage';
+import SubmissionActivityPage from '../features/submissions/pages/SubmissionActivityPage';
 import PaymentsPage from '../features/payments/pages/PaymentsPage';
 import MyPaymentsPage from '../features/payments/pages/MyPaymentsPage';
 import CurrenciesPage from '../features/payments/pages/CurrenciesPage';
@@ -71,6 +81,12 @@ function App() {
         <Route path="/colegio/:slug/solicitud" element={<PublicIntakePage />} />
 
         <Route element={<ProtectedRoute />}>
+          {/* Modo alumno: pantalla propia, fuera del layout del representante (sin menú ni pagos). */}
+          <Route element={<PermissionRoute guardianOnly />}>
+            <Route path="portal/learning/:studentId/alumno" element={<StudentModeShell />}>
+              <Route index element={<PortalViewGate view="learning"><StudentLearningPage /></PortalViewGate>} />
+            </Route>
+          </Route>
           <Route element={<AppLayout />}>
             <Route index element={<HomeRoute />} />
             {/* Centro de notificaciones: cada usuario ve las suyas (el backend filtra por su público). */}
@@ -156,6 +172,11 @@ function App() {
             </Route>
             <Route element={<PermissionRoute teacherOnly />}>
               <Route path="schedules/mine" element={<MySchedulePage />} />
+              {/* Portal docente: Mis clases, Calificar, Planificación y Más (la carga docente limita los datos). */}
+              <Route path="docente/clase" element={<ClassPage />} />
+              <Route path="docente/calificar" element={<GradeInboxPage />} />
+              <Route path="docente/planificacion" element={<PlanningPage />} />
+              <Route path="docente/mas" element={<TeacherMorePage />} />
             </Route>
 
             {/* Cierre y promoción: módulo propio, vedado a los docentes. */}
@@ -171,6 +192,9 @@ function App() {
 
             <Route element={<PermissionRoute module="grading" />}>
               <Route path="grading/plans/:id" element={<GradebookPage />} />
+              {/* Aula virtual: bandeja de entregas de tareas (docentes: solo su carga; el backend filtra). */}
+              <Route path="submissions" element={<SubmissionsInboxPage />} />
+              <Route path="submissions/:activityId" element={<SubmissionActivityPage />} />
             </Route>
             {/* Materias pendientes: dirección, coordinación y el profesor asignado (el backend filtra). */}
             <Route element={<PermissionRoute carryoverUsers />}>
@@ -197,6 +221,12 @@ function App() {
             {/* Cartelera de eventos para las familias (el backend filtra por sus hijos) */}
             <Route element={<PermissionRoute guardianOnly />}>
               <Route path="portal/events" element={<PortalViewGate view="events"><PortalEventsPage /></PortalViewGate>} />
+              {/* Portal de familia: Académico (notas, tareas y evaluaciones, aprender, historial), Agenda y Más. */}
+              <Route path="portal/academico" element={<AcademicPage />} />
+              <Route path="portal/agenda" element={<AgendaPage />} />
+              <Route path="portal/mas" element={<MorePage />} />
+              {/* Aprender en casa: material de apoyo por materia y el modo alumno (cuenta del representante). */}
+              <Route path="portal/learning" element={<PortalViewGate view="learning"><PortalLearningPage /></PortalViewGate>} />
               {/* Planillas de inscripción publicadas por el colegio (el backend valida el representante). */}
               <Route path="portal/enrollment" element={<PortalEnrollmentPage />} />
             </Route>

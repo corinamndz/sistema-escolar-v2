@@ -5,6 +5,8 @@ const evaluationReminders = require('../modules/schedules/evaluationReminder.ser
 const { sendEventReminders } = require('../modules/events/event.service');
 const { sendMeetingReminders } = require('../modules/appointments/appointment.service');
 const { sendOverdueReminders } = require('../modules/payments/paymentReminder.service');
+const { sendTaskReminders } = require('../modules/submissions/submissionNotices');
+const { sendDueMaterialNotices } = require('../modules/learning/learning.service');
 
 /**
  * Recordatorios automáticos: tarea DIARIA (Configuración → Notificaciones).
@@ -13,6 +15,8 @@ const { sendOverdueReminders } = require('../modules/payments/paymentReminder.se
  *   events       eventos publicados de la cartelera, N días antes (063; 0 = no)
  *   meetings     citas con padres pendientes o confirmadas, N días antes (063; 0 = no)
  *   overdue      cuotas vencidas: cada X días, hasta N recordatorios por cuota (063)
+ *   tasks        tareas con entrega digital aún sin entregar, N días antes de la hora límite (102)
+ *   materials    material de apoyo programado cuya hora de publicación ya llegó (103)
  *
  * ACTIVA por defecto (DAILY_REMINDERS=false la desactiva). Corre a la hora
  * DAILY_REMINDERS_TIME (por defecto 07:00, hora de Venezuela) y una vez poco
@@ -35,6 +39,8 @@ const PROCESSORS = {
   events: async (trx, tenantId) => sendEventReminders(trx, tenantId, (await prefs.reminderSettings(trx, tenantId)).eventReminderDays),
   meetings: async (trx, tenantId) => sendMeetingReminders(trx, tenantId, (await prefs.reminderSettings(trx, tenantId)).meetingReminderDays),
   overdue: (trx, tenantId) => sendOverdueReminders(trx, tenantId),
+  tasks: (trx, tenantId) => sendTaskReminders(trx, tenantId),
+  materials: (trx, tenantId) => sendDueMaterialNotices(trx, tenantId),
 };
 
 /** Recordatorios del día de UN colegio: { evaluations: {sent…}, events, meetings, overdue }. */
@@ -100,7 +106,7 @@ function startDailyRemindersJob() {
   const first = setTimeout(() => runOnce().catch((err) => console.error('[recordatorios]', err.message)), 20 * 1000);
   first.unref();
   const next = scheduleNext();
-  console.log(`[recordatorios] Recordatorios diarios (evaluaciones, eventos, citas y pagos vencidos) a las ${reminderTime()} (hora de Venezuela). Próxima: ${next.toISOString()}.`);
+  console.log(`[recordatorios] Recordatorios diarios (evaluaciones, eventos, citas, pagos vencidos y tareas) a las ${reminderTime()} (hora de Venezuela). Próxima: ${next.toISOString()}.`);
   return { next };
 }
 

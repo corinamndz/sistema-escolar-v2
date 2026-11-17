@@ -200,4 +200,59 @@ function enrollmentPhotoUpload(req, res, next) {
   });
 }
 
-module.exports = { logoUpload, MAX_LOGO_BYTES, proofUpload, MAX_PROOF_BYTES, importUpload, MAX_IMPORT_BYTES, supportUpload, announcementImageUpload, enrollmentPhotoUpload };
+// ---------------------------------------------------------------------------
+// Entrega de una tarea (campo `file`): PDF, JPG/PNG o Word/Excel/PowerPoint de
+// hasta 10 MB. Primer corte por extensión (el mimetype de Office varía según el
+// sistema); la firma binaria la valida services/storage/submissionStorage.js.
+// ---------------------------------------------------------------------------
+
+const MAX_SUBMISSION_BYTES = 10 * 1024 * 1024;
+const submissionMulter = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_SUBMISSION_BYTES, files: 1, fields: 5 },
+  fileFilter: (req, file, cb) => {
+    if (/\.(pdf|jpe?g|png|docx?|xlsx?|pptx?)$/i.test(file.originalname)) return cb(null, true);
+    return cb(ApiError.badRequest('Sube la tarea en PDF, JPG/PNG, Word, Excel o PowerPoint.', [{ path: 'file', message: 'Formato no permitido.' }]));
+  },
+}).single('file');
+
+function submissionUpload(req, res, next) {
+  submissionMulter(req, res, (err) => {
+    if (!err) return next();
+    if (err instanceof ApiError) return next(err);
+    if (err instanceof multer.MulterError) {
+      const message = err.code === 'LIMIT_FILE_SIZE' ? 'El archivo no puede pesar más de 10 MB.' : 'No se pudo procesar el archivo subido.';
+      return next(ApiError.badRequest(message, [{ path: 'file', message }]));
+    }
+    return next(err);
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Material de apoyo (campo `file`, OPCIONAL: los videos, enlaces y píldoras no
+// llevan archivo): documentos hasta 25 MB y notas de voz (el límite de 10 MB del
+// audio y la firma binaria los valida services/storage/materialStorage.js).
+// ---------------------------------------------------------------------------
+
+const materialMulter = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 25 * 1024 * 1024, files: 1, fields: 20 },
+  fileFilter: (req, file, cb) => {
+    if (/\.(pdf|jpe?g|png|docx?|xlsx?|pptx?|mp3|ogg|oga|opus|webm|m4a|wav)$/i.test(file.originalname)) return cb(null, true);
+    return cb(ApiError.badRequest('Sube un PDF, imagen, documento de Office o una nota de voz.', [{ path: 'file', message: 'Formato no permitido.' }]));
+  },
+}).single('file');
+
+function materialUpload(req, res, next) {
+  materialMulter(req, res, (err) => {
+    if (!err) return next();
+    if (err instanceof ApiError) return next(err);
+    if (err instanceof multer.MulterError) {
+      const message = err.code === 'LIMIT_FILE_SIZE' ? 'El archivo no puede pesar más de 25 MB.' : 'No se pudo procesar el archivo subido.';
+      return next(ApiError.badRequest(message, [{ path: 'file', message }]));
+    }
+    return next(err);
+  });
+}
+
+module.exports = { materialUpload, submissionUpload, logoUpload, MAX_LOGO_BYTES, proofUpload, MAX_PROOF_BYTES, importUpload, MAX_IMPORT_BYTES, supportUpload, announcementImageUpload, enrollmentPhotoUpload };

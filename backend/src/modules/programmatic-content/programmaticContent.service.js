@@ -220,6 +220,15 @@ async function getContent(trx, tenantId, { gradeId, subjectId, schoolPeriodId },
     total_weight: Math.round(Number(p.total_weight) * 100) / 100,
   });
 
+  const materialCounts = new Map(
+    (items.length
+      ? await trx('learning_materials')
+          .whereIn('content_id', items.map((i) => i.id))
+          .groupBy('content_id')
+          .select('content_id', trx.raw('count(*)::int AS total'), trx.raw("count(*) FILTER (WHERE status = 'published' AND (publish_at IS NULL OR publish_at <= now()))::int AS published"))
+      : []
+    ).map((r) => [r.content_id, r])
+  );
   const units = [...new Set(items.map((i) => i.unit))].sort(compareUnits);
   return {
     ...pair,
@@ -233,6 +242,10 @@ async function getContent(trx, tenantId, { gradeId, subjectId, schoolPeriodId },
           unit: i.unit,
           topic: i.topic,
           description: i.description,
+          week_number: i.week_number,
+          // Material de apoyo (103): cuántos tiene y cuántos ya ven las familias.
+          materials_count: materialCounts.get(i.id)?.total || 0,
+          materials_published: materialCounts.get(i.id)?.published || 0,
           activities: activities
             .filter((a) => a.programmatic_content_id === i.id)
             .map(({ programmatic_content_id: _c, evaluation_plan_id: planId, ...a }) => ({
@@ -247,20 +260,20 @@ async function getContent(trx, tenantId, { gradeId, subjectId, schoolPeriodId },
   };
 }
 
-async function createItem(trx, tenantId, { gradeId, subjectId, schoolPeriodId, unit, topic, description }) {
+async function createItem(trx, tenantId, { gradeId, subjectId, schoolPeriodId, unit, topic, description, weekNumber = null }) {
   await getPair(trx, tenantId, gradeId, subjectId, { requireActive: true });
   await getPeriod(trx, tenantId, schoolPeriodId, { forWriting: true });
   const where = { tenant_id: tenantId, grade_id: gradeId, subject_id: subjectId, school_period_id: schoolPeriodId };
   const { max } = await trx('programmatic_content').where(where).max('sort_order as max').first();
   const [item] = await trx('programmatic_content')
-    .insert({ ...where, unit, topic, description, sort_order: max === null ? 0 : Number(max) + 1 })
+    .insert({ ...where, unit, topic, description, week_number: weekNumber ?? null, sort_order: max === null ? 0 : Number(max) + 1 })
     .returning('*');
   return item;
 }
 
-async function updateItem(trx, tenantId, id, { unit, topic, description }) {
+async function updateItem(trx, tenantId, id, { unit, topic, description, weekNumber }) {
   await getItem(trx, tenantId, id);
-  const payload = { unit, topic, description, updated_at: trx.fn.now() };
+  const payload = { unit, topic, description, week_number: weekNumber, updated_at: trx.fn.now() };
   Object.keys(payload).forEach((k) => payload[k] === undefined && delete payload[k]);
   const [item] = await trx('programmatic_content').where({ id }).update(payload).returning('*');
   return item;
@@ -314,7 +327,7 @@ async function copyTopics(trx, tenantId, { gradeId, subjectId, fromPeriodId, toP
       continue;
     }
     const [row] = await trx('programmatic_content')
-      .insert({ ...base, school_period_id: toPeriodId, unit: item.unit, topic: item.topic, description: item.description, sort_order: next++ })
+      .insert({ ...base, school_period_id: toPeriodId, unit: item.unit, topic: item.topic, description: item.description, week_number: item.week_number ?? null, sort_order: next++ })
       .returning('id');
     byKey.set(key(item), row.id);
     map.set(item.id, row.id);

@@ -10,7 +10,7 @@ import Icon from '../../../components/ui/Icon';
 import Switch from '../../../components/ui/Switch';
 import { useToast } from '../../../components/ui/Toast';
 
-const ICONS = { bcv_rate: 'trendingUp', payment_confirmed: 'receipt', school_event: 'calendar', sanction: 'shield', club_enrollment: 'star', parent_meeting: 'users', evaluation_plan: 'clipboard', evaluation_reminder: 'clock', payment_overdue: 'alertCircle', recognition: 'award' };
+const ICONS = { bcv_rate: 'trendingUp', payment_confirmed: 'receipt', school_event: 'calendar', sanction: 'shield', club_enrollment: 'star', parent_meeting: 'users', evaluation_plan: 'clipboard', evaluation_reminder: 'clock', payment_overdue: 'alertCircle', recognition: 'award', task_reminder: 'upload', task_graded: 'checkCircle', learning_material: 'book' };
 const CHANNELS = [
   { key: 'bell', label: 'Campana', icon: 'bell' },
   { key: 'email', label: 'Correo', icon: 'mail' },
@@ -115,6 +115,14 @@ function NotificationPreferencesCard({ canEdit }) {
  */
 const ROW_SETTINGS = {
   evaluation_reminder: [{ key: 'evaluationReminderDays', before: 'Enviar', after: (n) => `${n === 1 ? 'día antes (la víspera)' : 'días antes'} de cada evaluación` }],
+  // Aula virtual: 0 = el mismo día de la hora límite.
+  task_reminder: [
+    {
+      key: 'taskReminderDays',
+      before: 'Enviar',
+      after: (n) => (n === 0 ? 'el mismo día de la hora límite' : `${n === 1 ? 'día antes (la víspera)' : 'días antes'} de la hora límite de cada tarea`),
+    },
+  ],
   school_event: [{ key: 'eventReminderDays', before: 'Recordatorio automático', after: (n) => (n === 0 ? 'sin recordatorio' : `${n === 1 ? 'día antes' : 'días antes'} de cada evento`) }],
   parent_meeting: [
     {

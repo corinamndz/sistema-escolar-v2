@@ -231,6 +231,12 @@ const activitySchema = z.object({
     .optional(),
   // Contenido programático que evalúa (de la misma materia y grado del plan); null lo desvincula.
   programmaticContentId: z.string().uuid('El contenido no es válido.').nullable().optional(),
+  // Aula virtual (101): "Requiere entrega digital en la plataforma" + fecha/hora límite (ISO con zona horaria).
+  requiresSubmission: z.boolean().optional(),
+  submissionDeadline: z.preprocess(
+    (v) => (v === '' ? null : v),
+    z.string().datetime({ offset: true, message: 'Fecha y hora límite inválida.' }).nullable().optional()
+  ),
   // Fecha de aplicación en cada sección del plan.
   sectionDates: z
     .array(z.object({ sectionId: z.string().uuid(), date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida.') }))

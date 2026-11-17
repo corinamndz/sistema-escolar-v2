@@ -22,6 +22,7 @@ import { termLabel } from '../../evaluation-plans/terms';
 import { CATEGORY_LABELS } from '../categories';
 import ContentItemModal from '../components/ContentItemModal';
 import IncludeEvaluationModal from '../components/IncludeEvaluationModal';
+import MaterialsDrawer from '../../learning/teacher/MaterialsDrawer';
 import BulkImportActions from '../../../components/import/BulkImportActions';
 import DuplicateToYearModal from '../../../components/ui/DuplicateToYearModal';
 import { useDefaultSchoolPeriod } from '../../../hooks/useDefaultSchoolPeriod';
@@ -130,6 +131,7 @@ function ProgrammaticContentPage() {
   const [openTopics, setOpenTopics] = useState(() => new Set());
   const [editing, setEditing] = useState(null); // null | { unit? } nuevo | ítem
   const [including, setIncluding] = useState(null);
+  const [materialsOf, setMaterialsOf] = useState(null); // { item, unit }: material de apoyo del tema
 
   const setParam = (patch) => setParams((p) => ({ ...Object.fromEntries(p), ...patch }), { replace: true });
 
@@ -500,7 +502,10 @@ function ProgrammaticContentPage() {
                                   <DroppableTopic key={item.id} item={item} unit={u.unit} className={`pc-topic ${expanded ? 'is-open' : ''}`}>
                                     <div className="pc-topic__head">
                                       <button type="button" className="pc-topic__toggle" onClick={() => toggle(setOpenTopics, item.id)} aria-expanded={expanded}>
-                                        <span className="pc-topic__title">{item.topic}</span>
+                                        <span className="pc-topic__title">
+                                          {item.week_number && <span className="pc-week">Semana {item.week_number}</span>}
+                                          {item.topic}
+                                        </span>
                                         <span className="pc-topic__desc">{item.description}</span>
                                       </button>
                                       <button
@@ -513,6 +518,16 @@ function ProgrammaticContentPage() {
                                         <Icon name="chevronDown" size={14} />
                                       </button>
                                       <div className="pc-topic__actions">
+                                        {/* Material de apoyo (no pasa por la revisión académica). */}
+                                        <button
+                                          type="button"
+                                          className={`pc-topic__count pc-topic__materials ${item.materials_count ? 'has-items' : ''}`}
+                                          onClick={() => setMaterialsOf({ item, unit: u.unit })}
+                                          title={item.materials_count ? `${item.materials_published} de ${item.materials_count} visibles para las familias` : 'Agregar guías, videos o notas de voz'}
+                                        >
+                                          <Icon name="book" size={14} />
+                                          {item.materials_count ? plural(item.materials_count, 'material', 'materiales') : 'Material'}
+                                        </button>
                                         {can('evaluation_plans', 'create') && (
                                           <Button
                                             size="sm"
@@ -625,6 +640,15 @@ function ProgrammaticContentPage() {
           units={units}
           onClose={() => setEditing(null)}
           onSaved={reload}
+        />
+      )}
+      {materialsOf && (
+        <MaterialsDrawer
+          item={materialsOf.item}
+          unit={materialsOf.unit}
+          canEdit={can('evaluation_plans', 'update') && !periodClosed}
+          onClose={() => setMaterialsOf(null)}
+          onChanged={reload}
         />
       )}
       {including && content && (

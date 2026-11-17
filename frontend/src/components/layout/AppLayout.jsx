@@ -5,6 +5,13 @@ import Topbar from './Topbar';
 import ErrorBoundary from '../ErrorBoundary';
 import SchoolFooter from './SchoolFooter';
 import LoginNoticeModal from './LoginNoticeModal';
+import { ChildSwitcher, FamilyBottomNav } from './FamilyNav';
+import { TEACHER_NAV, familyNavItems, isFamilyUser, isTeacherPortalUser } from './navigation';
+import { TeacherProvider } from '../../features/teacher/TeacherContext';
+import ClassSwitcher from '../../features/teacher/ClassSwitcher';
+import { FamilyProvider } from '../../features/portal/FamilyContext';
+import { useAuth } from '../../context/AuthContext';
+import { useTenant } from '../../context/TenantContext';
 
 const COLLAPSED_KEY = 'ui.sidebarCollapsed';
 
@@ -20,6 +27,16 @@ function AppLayout() {
   const [collapsed, setCollapsed] = useState(readCollapsed); // desktop: angosto/ancho (se recuerda entre sesiones)
   const [mobileOpen, setMobileOpen] = useState(false); // mobile: drawer abierto/cerrado
   const { pathname } = useLocation();
+  const { user } = useAuth();
+  const { settings } = useTenant();
+  // Portal de familia: hijo activo compartido, selector de hijo y barra inferior en el móvil.
+  const family = isFamilyUser(user);
+  const familyItems = family ? familyNavItems(settings.portalViews) : [];
+  // Pantallas donde el hijo activo decide lo que se ve.
+  const showSwitcher = family && (pathname === '/' || /^\/portal\/(academico|agenda|mas)/.test(pathname));
+  // Portal del docente: clase activa compartida, selector de clase y barra inferior.
+  const teacherPortal = isTeacherPortalUser(user);
+  const showClassSwitcher = teacherPortal && /^\/docente\/(clase|planificacion)/.test(pathname);
 
   useEffect(() => {
     try {
@@ -47,8 +64,8 @@ function AppLayout() {
     };
   }, [mobileOpen]);
 
-  return (
-    <div className="app-shell">
+  const shell = (
+    <div className={`app-shell ${family || teacherPortal ? 'app-shell--family' : ''}`}>
       <Sidebar
         collapsed={collapsed}
         mobileOpen={mobileOpen}
@@ -60,6 +77,8 @@ function AppLayout() {
         <Topbar onOpenMobileSidebar={() => setMobileOpen(true)} />
         {/* Notificaciones sin leer: aviso una vez por inicio de sesión. */}
         <LoginNoticeModal />
+        {showSwitcher && <ChildSwitcher />}
+        {showClassSwitcher && <ClassSwitcher />}
         <main className="app-content" key={pathname}>
           {/* Si una pantalla falla al dibujarse, se muestra un aviso (no la app en blanco). */}
           <ErrorBoundary resetKey={pathname}>
@@ -71,8 +90,12 @@ function AppLayout() {
       </div>
 
       {mobileOpen && <div className="app-overlay" onClick={() => setMobileOpen(false)} aria-hidden="true" />}
+      {family && <FamilyBottomNav items={familyItems} />}
+      {teacherPortal && <FamilyBottomNav items={TEACHER_NAV} />}
     </div>
   );
+  if (family) return <FamilyProvider>{shell}</FamilyProvider>;
+  return teacherPortal ? <TeacherProvider>{shell}</TeacherProvider> : shell;
 }
 
 export default AppLayout;

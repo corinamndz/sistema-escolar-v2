@@ -20,6 +20,8 @@ const CATALOG = [
   // Ficha de cada alumno
   { key: 'grades', group: 'student', label: 'Calificaciones', description: 'Notas por materia y el contenido de cada materia con sus evaluaciones.', icon: 'trendingUp' },
   { key: 'evaluation_plan', group: 'student', label: 'Plan de evaluación', description: 'Los planes de evaluación publicados de cada materia.', icon: 'clipboard' },
+  { key: 'learning', group: 'menu', label: 'Aprender en casa', description: 'Material de apoyo de cada materia (guías, videos, notas de voz) con el progreso del alumno y su modo alumno.', icon: 'book' },
+  { key: 'tasks', group: 'student', label: 'Tareas en línea', description: 'Tareas con entrega digital: subir el archivo y ver la nota y los comentarios del docente.', icon: 'upload' },
   { key: 'evaluations', group: 'student', label: 'Evaluaciones', description: 'Cronograma de evaluaciones de la sección.', icon: 'calendar' },
   { key: 'schedule', group: 'student', label: 'Horario', description: 'Horario de clases de la sección.', icon: 'clock' },
   { key: 'history', group: 'student', label: 'Historial académico', description: 'Resultados de años escolares anteriores.', icon: 'book' },

@@ -1,4 +1,5 @@
-import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { useEffect } from 'react';
+import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom';
 import portalApi from '../../../api/endpoints/portal.api';
 import { useFetch } from '../../../hooks/useFetch';
 import PageHeader from '../../../components/ui/PageHeader';
@@ -10,22 +11,25 @@ import Icon from '../../../components/ui/Icon';
 import { LevelBadge } from '../../academics/levels';
 import { formatAmounts, formatDate, formatMoney } from '../../payments/paymentStatus';
 import StudentGrades from '../components/StudentGrades';
-import AcademicHistory from '../../students/components/AcademicHistory';
 import GradesLockedNotice from '../components/GradesLockedNotice';
 import ScheduleGrid, { hueOf } from '../../schedules/components/ScheduleGrid';
 import { SanctionCard, SeverityTotals } from '../../discipline/components/SanctionParts';
 import PortalEvaluations from '../components/PortalEvaluations';
 import PortalEvaluationPlan from '../components/PortalEvaluationPlan';
 import PortalClubs from '../components/PortalClubs';
+import PortalTasks from '../components/PortalTasks';
 import PortalRecognitions from '../components/PortalRecognitions';
 import PortalCarryovers from '../../carryovers/components/PortalCarryovers';
-import FormPdfButton from '../../enrollment-forms/components/FormPdfButton';
 import { usePortalViews } from '../../../lib/portalViews';
+import { useFamily } from '../FamilyContext';
+import PortalHistory from '../components/PortalHistory';
 
 // `view`: la clave en Configuración → Vistas del representante (Información siempre se muestra).
 const TABS = [
   { key: 'grades', label: 'Calificaciones', view: 'grades' },
   { key: 'plan', label: 'Plan de evaluación', view: 'evaluation_plan' },
+  // Aula virtual: tareas con entrega digital (subir el archivo, ver nota y comentarios).
+  { key: 'tasks', label: 'Tareas en línea', view: 'tasks' },
   { key: 'schedule', label: 'Horario', view: 'schedule' },
   { key: 'evaluations', label: 'Evaluaciones', view: 'evaluations' },
   { key: 'history', label: 'Historial académico', view: 'history' },
@@ -36,6 +40,21 @@ const TABS = [
 ];
 
 /**
+ * Portal de familia: lo académico vive en «Académico». Las pestañas académicas
+ * (y los enlaces de los avisos: ?tab=tasks, ?materia=…) se redirigen allá con
+ * este alumno como hijo activo; aquí quedan horario, reconocimientos,
+ * convivencia, clubes e información (se llega desde «Más»).
+ */
+const ACADEMIC_REDIRECT = {
+  grades: 'tab=notas',
+  plan: 'tab=tareas&sub=plan',
+  tasks: 'tab=tareas&sub=entregas',
+  evaluations: 'tab=tareas&sub=evaluaciones',
+  history: 'tab=historial',
+};
+const ACADEMIC_TABS = new Set(Object.keys(ACADEMIC_REDIRECT));
+
+/**
  * Detalle de un alumno en el portal del representante. Los datos salen de
  * /portal/me (solo trae a SUS representados), así que un id ajeno no muestra nada.
  */
@@ -43,11 +62,23 @@ function PortalStudentPage() {
   const { studentId } = useParams();
   const [params, setParams] = useSearchParams();
   const isOn = usePortalViews();
-  const tabs = TABS.filter((t) => !t.view || isOn(t.view));
+  const family = useFamily();
+  const tabs = TABS.filter((t) => (!t.view || isOn(t.view)) && !(family && ACADEMIC_TABS.has(t.key)));
+  const requested = params.get('tab');
+  const redirect = family && (ACADEMIC_REDIRECT[requested] || (!requested && params.get('materia') ? 'tab=notas' : null));
+  // El alumno de la URL pasa a ser el hijo activo (también al venir de un aviso).
+  useEffect(() => {
+    if (family && studentId) family.setStudentId(studentId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [studentId]);
   // Pestaña pedida (p. ej. desde un aviso) si está activa; si no, la primera visible.
   const tab = tabs.some((t) => t.key === params.get('tab')) ? params.get('tab') : tabs[0].key;
   const { data, loading, error } = useFetch(() => portalApi.getMine(), []);
 
+  if (redirect) {
+    const materia = params.get('materia');
+    return <Navigate to={`/portal/academico?${redirect}${materia ? `&materia=${materia}` : ''}`} replace />;
+  }
   if (loading) return <Spinner />;
   if (error) return <Alert>{error}</Alert>;
 
@@ -81,7 +112,7 @@ function PortalStudentPage() {
           </span>
         }
         actions={
-          <Link to="/" className="btn btn--secondary">
+          <Link to={family ? '/portal/mas' : '/'} className="btn btn--secondary">
             <Icon name="arrowLeft" size={16} /> Volver
           </Link>
         }
@@ -89,7 +120,14 @@ function PortalStudentPage() {
 
       {/* Con cuotas vencidas los detalles (calificaciones) están bloqueados: solo el aviso. */}
       {student.grades_locked ? (
-        <GradesLockedNotice overdueCount={student.payments?.overdue_count} />
+        <>
+          <GradesLockedNotice overdueCount={student.payments?.overdue_count} />
+          {isOn('tasks') && tab !== 'tasks' && (
+            <button type="button" className="btn btn--secondary" style={{ marginBottom: 16 }} onClick={() => setParams({ tab: 'tasks' }, { replace: true })}>
+              <Icon name="upload" size={16} /> Entregar tareas en línea
+            </button>
+          )}
+        </>
       ) : (
         <Tabs tabs={tabs} active={tab} onChange={(key) => setParams({ tab: key }, { replace: true })} />
       )}
@@ -101,6 +139,8 @@ function PortalStudentPage() {
           <StudentGrades studentId={studentId} />
         </>
       )}
+      {/* Las tareas se pueden entregar aunque haya cuotas vencidas (las notas se ocultan en el backend). */}
+      {tab === 'tasks' && <PortalTasks studentId={studentId} />}
       {!student.grades_locked && tab === 'plan' && <PortalEvaluationPlan studentId={studentId} />}
       {!student.grades_locked && tab === 'schedule' && <PortalSchedule studentId={studentId} />}
       {!student.grades_locked && tab === 'evaluations' && <PortalEvaluations studentId={studentId} />}
@@ -158,31 +198,6 @@ function PortalStudentPage() {
   );
 }
 
-/** Historial académico (años anteriores y el actual) para el representante. */
-function PortalHistory({ studentId }) {
-  const { data, loading, error } = useFetch(() => portalApi.getStudentHistory(studentId), [studentId]);
-  if (loading) return <Spinner />;
-  if (error) return <Alert>{error}</Alert>;
-  // Cada año con el diseño de su nivel y su año, solo si el colegio lo publicó.
-  const certificates = data.years.filter((y) => (data.certificate_enrollment_ids || []).includes(y.enrollment_id));
-  return (
-    <Card
-      title="Historial académico"
-      subtitle="Grados cursados en cada año escolar, resultado y notas finales"
-      actions={
-        certificates.length > 0 && (
-          <span className="cert-portal">
-            {certificates.map((y) => (
-              <FormPdfButton key={y.enrollment_id} load={() => portalApi.getStudentCertificate(studentId, y.enrollment_id)} fileName={`certificado-${y.school_period.name}.pdf`} label={`Certificado ${y.school_period.name}`} />
-            ))}
-          </span>
-        )
-      }
-    >
-      <AcademicHistory data={data} />
-    </Card>
-  );
-}
 
 /** Historial disciplinario del alumno (solo lectura): tipo de falta, motivo, medida, fecha y período. */
 function PortalSanctions({ studentId }) {

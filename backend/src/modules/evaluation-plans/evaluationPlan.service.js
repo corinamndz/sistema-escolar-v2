@@ -89,11 +89,13 @@ async function listPlanSections(trx, planId) {
  */
 async function loadActivityStructure(trx, activityIds) {
   if (activityIds.length === 0) return new Map();
-  const [criteria, indicators, dates, scored] = [
+  const [criteria, indicators, dates, scored, submitted] = [
     await trx('evaluation_criteria').whereIn('activity_id', activityIds).orderBy('position'),
     await trx('evaluation_indicators').whereIn('activity_id', activityIds).orderBy('position'),
     await trx('activity_section_dates').whereIn('activity_id', activityIds),
     await trx('activity_scores').whereIn('evaluation_activity_id', activityIds).distinct('evaluation_activity_id').pluck('evaluation_activity_id'),
+    // Aula virtual (101): con entregas no se puede quitar la entrega digital.
+    await trx('evaluation_submissions').whereIn('activity_id', activityIds).distinct('activity_id').pluck('activity_id'),
   ];
   const map = new Map();
   activityIds.forEach((id) => {
@@ -110,6 +112,7 @@ async function loadActivityStructure(trx, activityIds) {
         })),
       section_dates: dates.filter((d) => d.activity_id === id).map((d) => ({ section_id: d.section_id, applied_on: d.applied_on })),
       has_scores: scored.includes(id),
+      has_submissions: submitted.includes(id),
     });
   });
   return map;
@@ -416,6 +419,12 @@ async function planHasGrades(trx, planId) {
     .where('a.evaluation_plan_id', planId)
     .first('sc.student_id');
   if (score) return true;
+  // Entregas de tareas (101): cuentan como trabajo de los alumnos (no se borra ni se mueve el plan).
+  const submission = await trx('evaluation_submissions as es')
+    .join('evaluation_activities as a', 'a.id', 'es.activity_id')
+    .where('a.evaluation_plan_id', planId)
+    .first('es.id');
+  if (submission) return true;
   const assessment = await trx('competency_assessments as ca')
     .join('project_competencies as pc', 'pc.id', 'ca.project_competency_id')
     .join('pedagogical_projects as pp', 'pp.id', 'pc.pedagogical_project_id')
@@ -799,6 +808,30 @@ async function setActivityContent(trx, tenantId, planId, activityId, contentId) 
   };
 }
 
+/**
+ * Campos de entrega digital a guardar ({} si no se enviaron):
+ *   - activar exige fecha y hora límite;
+ *   - desactivar con entregas ya recibidas → 409 (se perderían de la vista de la familia);
+ *   - desactivada, la fecha límite se limpia.
+ */
+async function resolveSubmissionFields(trx, existing, { requiresSubmission, submissionDeadline }) {
+  if (requiresSubmission === undefined && submissionDeadline === undefined) return {};
+  const enabled = requiresSubmission ?? Boolean(existing?.requires_submission);
+  if (!enabled) {
+    if (existing?.requires_submission && (await trx('evaluation_submissions').where({ activity_id: existing.id }).first('id'))) {
+      throw ApiError.conflict('La actividad ya tiene entregas de los alumnos: no se puede quitar la entrega digital.', [
+        { path: 'requiresSubmission', message: 'Actividad con entregas.' },
+      ]);
+    }
+    return { requires_submission: false, submission_deadline: null };
+  }
+  const deadline = submissionDeadline !== undefined ? submissionDeadline : existing?.submission_deadline;
+  if (!deadline) {
+    throw ApiError.badRequest('Indica la fecha y hora límite de entrega.', [{ path: 'submissionDeadline', message: 'Requerida.' }]);
+  }
+  return { requires_submission: true, submission_deadline: deadline };
+}
+
 async function upsertActivity(
   trx,
   tenantId,
@@ -818,6 +851,8 @@ async function upsertActivity(
     programmaticContentId,
     instrument,
     planFormat,
+    requiresSubmission,
+    submissionDeadline,
   }
 ) {
   if (weightPercent <= 0 || weightPercent > 100) {
@@ -882,6 +917,9 @@ async function upsertActivity(
     });
   }
 
+  // Entrega digital (101). Sin enviar los campos se conserva lo guardado (Excel, "Incluir evaluación", duplicar…).
+  const submissionFields = await resolveSubmissionFields(trx, existing, { requiresSubmission, submissionDeadline });
+
   const currentTotal = activities
     .filter((a) => a.id !== activityId)
     .reduce((sum, a) => sum + Number(a.weight_percent), 0);
@@ -905,6 +943,7 @@ async function upsertActivity(
     ...(contentRefs !== undefined ? { content_refs: JSON.stringify(contentRefs) } : {}),
     ...(programmaticContentId !== undefined ? { programmatic_content_id: programmaticContentId } : {}),
     ...(instrument !== undefined ? { instrument } : {}),
+    ...submissionFields,
     max_score: effectiveMax,
   };
 
@@ -987,6 +1026,10 @@ async function deleteActivity(trx, tenantId, planId, activityId) {
   const hasScores = await trx('activity_scores').where({ evaluation_activity_id: activityId }).first();
   if (hasScores) {
     throw ApiError.conflict('No se puede eliminar: ya hay calificaciones registradas para esta actividad.');
+  }
+  // Aula virtual (101): los archivos que entregaron las familias no se borran en silencio.
+  if (await trx('evaluation_submissions').where({ activity_id: activityId }).first('id')) {
+    throw ApiError.conflict('No se puede eliminar: los alumnos ya entregaron archivos para esta actividad.');
   }
   // Actividad de un proyecto pedagógico: se borra con él (y sus competencias), salvo que ya estén evaluadas.
   const assessed = await trx('competency_assessments as ca')

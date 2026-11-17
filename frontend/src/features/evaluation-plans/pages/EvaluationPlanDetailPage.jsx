@@ -17,6 +17,8 @@ import Alert from '../../../components/ui/Alert';
 import Spinner from '../../../components/ui/Spinner';
 import Badge from '../../../components/ui/Badge';
 import Icon from '../../../components/ui/Icon';
+import Switch from '../../../components/ui/Switch';
+import { formatDateTime, fromLocalInput, toLocalInput } from '../../submissions/submissionStatus';
 import { useConfirm } from '../../../components/ui/ConfirmDialog';
 import { useToast } from '../../../components/ui/Toast';
 import { getErrorMessage } from '../../../api/axiosClient';
@@ -138,6 +140,11 @@ function EvaluationPlanDetailPage() {
           <div className="cell-person__name">{a.title}</div>
           {a.programmatic_content && <ContentTag content={a.programmatic_content} />}
           {a.description && <div className="cell-person__sub activity-description">{a.description}</div>}
+          {a.requires_submission && (
+            <Link to={`/submissions/${a.id}`} className="cell-person__sub" title="Abrir la bandeja de entregas">
+              <Icon name="upload" size={12} /> Entrega digital · hasta {formatDateTime(a.submission_deadline)}
+            </Link>
+          )}
           {a.project && <ProjectBlock project={a.project} canEdit={!closed} onChanged={refetch} />}
         </div>
       ),
@@ -484,6 +491,9 @@ function ActivityFormModal({ plan, planId, initial, remaining, termStart, termEn
     weightPercent: initial.weight_percent || '',
     description: initial.description || '',
     plannedDate: initial.planned_date || '',
+    // Aula virtual: entrega digital en la plataforma con fecha y hora límite (hora local del navegador).
+    requiresSubmission: Boolean(initial.requires_submission),
+    submissionDeadline: toLocalInput(initial.submission_deadline),
   });
   const { run, loading, error, fieldErrors } = useMutation(
     isEdit
@@ -511,7 +521,15 @@ function ActivityFormModal({ plan, planId, initial, remaining, termStart, termEn
   const sectionDateErrors = detailed
     ? plan.sections.map((sec) => weekendError(dForm.sectionDates[sec.id]) && `Sección ${sec.name}: ${weekendError(dForm.sectionDates[sec.id])}`).filter(Boolean)
     : [];
-  const dateError = Boolean(plannedDateError || sectionDateErrors.length);
+  const deadlineError = form.requiresSubmission && !form.submissionDeadline ? 'Indica la fecha y hora límite de entrega.' : null;
+  // Aviso (no bloquea): la hora límite de entrega cae ANTES de la fecha en que se aplica la actividad.
+  const appliedDates = detailed ? Object.values(dForm.sectionDates || {}).filter(Boolean) : [form.plannedDate].filter(Boolean);
+  const latestApplied = appliedDates.sort().at(-1) || null;
+  const deadlineBeforeActivity =
+    form.requiresSubmission && form.submissionDeadline && latestApplied && form.submissionDeadline.slice(0, 10) < latestApplied
+      ? `Ojo: la entrega vence antes de la fecha de la actividad (${formatDay(latestApplied)}). Si moviste la fecha de la actividad, ajusta también la hora límite.`
+      : null;
+  const dateError = Boolean(plannedDateError || sectionDateErrors.length || deadlineError);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -533,6 +551,8 @@ function ActivityFormModal({ plan, planId, initial, remaining, termStart, termEn
         weightPercent: Number(form.weightPercent),
         description: form.description.trim(),
         plannedDate: form.plannedDate,
+        requiresSubmission: form.requiresSubmission,
+        submissionDeadline: form.requiresSubmission ? fromLocalInput(form.submissionDeadline) : null,
         ...(plan.subject_id ? { programmaticContentId: contentId || null } : {}),
         ...extra,
       });
@@ -635,6 +655,26 @@ function ActivityFormModal({ plan, planId, initial, remaining, termStart, termEn
               placeholder="Ej.: Evaluación escrita de los temas 1 al 3. Se evalúa ortografía y comprensión."
             />
           </Field>
+          <Field label="Aula virtual" error={fieldErrors.requiresSubmission} full>
+            <Switch
+              checked={form.requiresSubmission}
+              onChange={(v) => setForm((f) => ({ ...f, requiresSubmission: v }))}
+              disabled={Boolean(initial.requires_submission && initial.has_submissions)}
+              label="Requiere entrega digital en la plataforma"
+              description="Los representantes podrán subir el archivo de la tarea desde el portal hasta la fecha y hora límite."
+            />
+          </Field>
+          {form.requiresSubmission && (
+            <Field label="Fecha y hora límite de entrega" error={deadlineError || fieldErrors.submissionDeadline} hint={deadlineBeforeActivity || 'Es independiente de la fecha de la actividad. Después de esta hora se siguen recibiendo archivos, marcados como «fuera de plazo».'}>
+              <Input
+                type="datetime-local"
+                value={form.submissionDeadline}
+                onChange={(e) => setForm((f) => ({ ...f, submissionDeadline: e.target.value }))}
+                error={Boolean(deadlineError || fieldErrors.submissionDeadline)}
+                required
+              />
+            </Field>
+          )}
           {detailed && (
             <>
               <Field label="Instrumento de evaluación" error={fieldErrors.instrument} hint="Opcional.">

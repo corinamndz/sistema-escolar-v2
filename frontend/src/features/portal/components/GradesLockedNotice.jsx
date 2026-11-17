@@ -1,31 +1,46 @@
 import { Link } from 'react-router-dom';
 import Icon from '../../../components/ui/Icon';
+import { useTenant } from '../../../context/TenantContext';
 
-/** Mismo texto que envía el backend al bloquear las calificaciones. */
+/** Mismo texto que envía el backend al pausar las calificaciones (grades.service). */
 export const GRADES_LOCKED_MESSAGE =
-  'Acceso a detalles del alumno bloqueado por pagos pendientes. Por favor, comuníquese con administración o reporte su pago.';
+  'Las notas están en pausa por una mensualidad vencida. Se vuelven a ver en cuanto reportes el pago (no hace falta esperar la confirmación).';
 
 /**
- * Aviso de calificaciones bloqueadas por cuotas vencidas, con acceso directo a
- * "Mis pagos" para reportar el pago (un pago reportado desbloquea al instante:
- * queda en revisión y deja de contar como vencido).
+ * Notas EN PAUSA por cuotas vencidas: mensaje empático e institucional, con la
+ * salida a la vista. Reportar el pago las reactiva al instante (un pago
+ * reportado deja de contar como vencido), y eso se dice claramente.
+ *   Ponerme al día            → Pagos, con el pago de lo vencido ya preparado
+ *   Escribir a administración → correo de contacto del colegio (si lo tiene)
  */
-function GradesLockedNotice({ overdueCount, compact = false, id }) {
+function GradesLockedNotice({ overdueCount, studentName, compact = false, id }) {
+  const { settings } = useTenant();
+  const who = studentName ? `de ${studentName} ` : '';
   return (
-    <div id={id} className={`grades-locked ${compact ? 'grades-locked--compact' : ''}`} role="alert">
-      <Icon name="lock" size={compact ? 16 : 22} className="grades-locked__icon" />
-      <div className="grades-locked__body">
-        <strong>{GRADES_LOCKED_MESSAGE}</strong>
-        {overdueCount > 0 && (
-          <span className="text-sm">
-            {overdueCount} cuota{overdueCount === 1 ? '' : 's'} vencida{overdueCount === 1 ? '' : 's'}.
-          </span>
-        )}
-        <Link to="/payments/mine" className="btn btn--primary btn--sm">
-          <Icon name="receipt" size={15} /> Reportar pago
-        </Link>
+    <section id={id} className={`grades-paused ${compact ? 'grades-paused--compact' : ''}`} aria-labelledby={id ? `${id}-title` : undefined}>
+      <span className="grades-paused__icon" aria-hidden="true">
+        <Icon name="pause" size={compact ? 16 : 20} />
+      </span>
+      <div className="grades-paused__body">
+        <strong id={id ? `${id}-title` : undefined} className="grades-paused__title">
+          Las notas {who}están en pausa
+        </strong>
+        <span className="grades-paused__text">
+          {overdueCount > 0 ? `Hay ${overdueCount === 1 ? 'una mensualidad vencida' : `${overdueCount} mensualidades vencidas`}. ` : ''}
+          En cuanto reportes el pago se vuelven a ver; no hace falta esperar la confirmación.
+        </span>
+        <div className="grades-paused__actions">
+          <Link to="/payments/mine?pagar=vencidas" className="btn btn--primary btn--sm">
+            <Icon name="wallet" size={15} /> Ponerme al día
+          </Link>
+          {settings?.contactEmail && (
+            <a className="btn btn--ghost btn--sm" href={`mailto:${settings.contactEmail}?subject=${encodeURIComponent('Consulta sobre mensualidades')}`}>
+              <Icon name="mail" size={15} /> Escribir a administración
+            </a>
+          )}
+        </div>
       </div>
-    </div>
+    </section>
   );
 }
 

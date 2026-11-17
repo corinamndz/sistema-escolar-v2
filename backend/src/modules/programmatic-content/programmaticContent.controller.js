@@ -10,6 +10,8 @@ const fields = {
   unit: text('La unidad', 100),
   topic: text('El tema', 200),
   description: text('La descripción del contenido', 4000),
+  // Semana de clase del tema (103), opcional.
+  weekNumber: z.preprocess((v) => (v === '' || v === undefined ? undefined : v), z.coerce.number().int().min(1, 'Semana entre 1 y 52.').max(52, 'Semana entre 1 y 52.').nullable().optional()),
 };
 
 /** GET /programmatic-content/options?schoolPeriodId= — materias y grados (docente: los que dicta), con los temas de ese año. */
@@ -38,7 +40,7 @@ const getContent = asyncHandler(async (req, res) => {
 /** POST /programmatic-content — { gradeId, subjectId, schoolPeriodId, unit, topic, description } */
 const createItem = asyncHandler(async (req, res) => {
   const data = z
-    .object({ gradeId: uuid('El grado no es válido.'), subjectId: uuid('La materia no es válida.'), schoolPeriodId: uuid('Elige el año escolar.'), ...fields })
+    .object({ gradeId: uuid('El grado no es válido.'), subjectId: uuid('La materia no es válida.'), schoolPeriodId: uuid('Elige el año escolar.'), ...fields, weekNumber: fields.weekNumber })
     .parse(req.body);
   await teacherScope.assertGradeSubjectAccess(req, data.gradeId, data.subjectId);
   await reviews.assertContentEditable(req, data.gradeId, data.subjectId, data.schoolPeriodId);
@@ -61,7 +63,7 @@ const ownItem = async (req, res, next) => {
   }
 };
 
-/** PUT /programmatic-content/:id — { unit?, topic?, description? } */
+/** PUT /programmatic-content/:id — { unit?, topic?, description?, weekNumber? } */
 const updateItem = asyncHandler(async (req, res) => {
   const data = z.object(fields).partial().parse(req.body);
   res.status(200).json(await service.updateItem(req.db, req.tenantId, req.params.id, data));

@@ -13,6 +13,10 @@ import Icon from '../../../components/ui/Icon';
 import { NAV_SECTIONS } from '../../../components/layout/navigation';
 import { isFeatureOn } from '../../../lib/features';
 import GuardianPanel from '../components/GuardianPanel';
+import FamilyHome from '../../portal/components/FamilyHome';
+import { isFamilyUser, isTeacherPortalUser } from '../../../components/layout/navigation';
+import TeacherHome from '../../teacher/pages/TeacherHome';
+import WelcomeBanner from '../../../components/ui/WelcomeBanner';
 import ExecutiveMetrics from '../components/ExecutiveMetrics';
 import { useAcademicYear } from '../../../context/AcademicYearContext';
 
@@ -26,13 +30,6 @@ const TEACHER_STATS = [
 ];
 
 const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
-
-function greeting() {
-  const h = new Date().getHours();
-  if (h < 12) return 'Buenos días';
-  if (h < 19) return 'Buenas tardes';
-  return 'Buenas noches';
-}
 
 /** KPIs del colegio a partir del resumen del backend; cada tarjeta solo si el usuario puede leer ese módulo. */
 function kpisFrom(summary) {
@@ -128,19 +125,16 @@ function DashboardPage() {
   const quickLinks = NAV_SECTIONS.flatMap((s) => s.items)
     .filter((item) => item.path !== '/' && isFeatureOn(item.feature) && (item.public || can(item.moduleCode, 'read')))
     .slice(0, 6);
-  const today = new Date().toLocaleDateString('es', { weekday: 'long', day: 'numeric', month: 'long' });
+
+  // Portal de familia: inicio priorizado (lo que requiere atención, la semana, novedades).
+  if (isFamilyUser(user)) return <FamilyHome />;
+  // Portal docente: «Hoy» (pendientes, clases del día, accesos rápidos).
+  if (isTeacherPortalUser(user)) return <TeacherHome />;
 
   return (
     <div>
-      <section className="welcome">
-        <div>
-          <h2>
-            {greeting()}, {displayName} 👋
-          </h2>
-          <p>{isGuardian ? `Bienvenido al portal de ${settings.name}.` : `Este es el resumen de ${settings.name}.`}</p>
-        </div>
-        <span className="welcome__date">{today}</span>
-      </section>
+      {/* Banda de bienvenida protegida (DESIGN_SYSTEM.md): igual en los tres portales. */}
+      <WelcomeBanner name={displayName} subtitle={isGuardian ? `Bienvenido al portal de ${settings.name}.` : `Este es el resumen de ${settings.name}.`} />
 
       {showManagement && <Alert>{error}</Alert>}
 

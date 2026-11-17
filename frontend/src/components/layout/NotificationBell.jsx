@@ -32,6 +32,10 @@ export const NOTIFICATION_ICONS = {
   review_result: 'checkCircle',
   announcement: 'megaphone',
   enrollment_form: 'clipboard',
+  task_submitted: 'inbox',
+  task_reminder: 'clock',
+  task_graded: 'checkCircle',
+  learning_material: 'book',
 };
 /** Categoría visible de cada tipo de aviso (aviso al iniciar sesión, Centro de notificaciones). */
 export const NOTIFICATION_TYPE_LABELS = {
@@ -50,6 +54,10 @@ export const NOTIFICATION_TYPE_LABELS = {
   review_result: 'Revisión académica',
   announcement: 'Comunicado',
   enrollment_form: 'Inscripción',
+  task_submitted: 'Entrega de tarea',
+  task_reminder: 'Tarea por entregar',
+  task_graded: 'Tarea revisada',
+  learning_material: 'Material de apoyo',
 };
 
 /**

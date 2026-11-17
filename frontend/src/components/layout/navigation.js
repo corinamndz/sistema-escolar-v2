@@ -36,6 +36,8 @@ const NAV_SECTIONS = [
       { moduleCode: 'events', label: 'Eventos y cartelera', icon: 'calendar', path: '/events' },
       // Citas con padres: la administración agenda; el docente consulta las de sus alumnos.
       { moduleCode: 'appointments', label: 'Citas con padres', teacherLabel: 'Citas de mis alumnos', icon: 'clock', path: '/appointments' },
+      // Material de apoyo de los docentes y el modo alumno (familias).
+      { moduleCode: 'portal_learning', label: 'Aprender en casa', icon: 'book', path: '/portal/learning', guardianOnly: true, portalView: 'learning' },
       { moduleCode: 'portal_events', label: 'Cartelera', icon: 'calendar', path: '/portal/events', guardianOnly: true, portalView: 'events' },
       // La familia completa la planilla en «Inscripción»; el Administrador la diseña y aprueba (sección Administración).
       { moduleCode: 'portal_enrollment', label: 'Inscripción', icon: 'clipboard', path: '/portal/enrollment', guardianOnly: true },
@@ -53,6 +55,8 @@ const NAV_SECTIONS = [
       // `reviewBadge`: insignia con lo que espera revisión del coordinador o el Director.
       { moduleCode: 'evaluation_plans', label: 'Contenido programático', icon: 'layers', path: '/programmatic-content', reviewBadge: 'content' },
       { moduleCode: 'evaluation_plans', label: 'Planes de evaluación', icon: 'clipboard', path: '/evaluation-plans', reviewBadge: 'plan' },
+      // Aula virtual: entregas de tareas en línea para descargar, calificar y comentar.
+      { moduleCode: 'grading', label: 'Bandeja de entregas', icon: 'inbox', path: '/submissions' },
       // Materias pendientes (arrastres): dirección y coordinación las asignan; el profesor las evalúa.
       { moduleCode: 'carryovers', label: 'Materias pendientes', icon: 'refresh', path: '/carryovers', carryoverUsers: true, feature: 'carryovers' },
       // Resumen de calificaciones del colegio: acumulado por período de cada alumno (administración).
@@ -101,10 +105,57 @@ const NAV_SECTIONS = [
   },
 ];
 
+/**
+ * Portal del REPRESENTANTE (solo familia): 5 destinos, iguales en el menú
+ * lateral (escritorio) y en la barra inferior (móvil). Lo secundario (horario,
+ * reconocimientos, convivencia, clubes, inscripción…) está en «Más».
+ */
+const FAMILY_NAV = [
+  { label: 'Inicio', icon: 'home', path: '/' },
+  { label: 'Académico', icon: 'graduation', path: '/portal/academico' },
+  { label: 'Agenda', icon: 'calendar', path: '/portal/agenda' },
+  { label: 'Pagos', icon: 'receipt', path: '/payments/mine', portalView: 'payments' },
+  { label: 'Más', icon: 'menu', path: '/portal/mas' },
+];
+
+/** ¿Usa el portal de familia? Representante que no es también personal del colegio. */
+function isFamilyUser(user) {
+  return Boolean(user?.guardianId) && !user?.isAdmin && !user?.teachingStaffId && !user?.isRestrictedTeacher && !user?.coordinator;
+}
+
+/** Destinos del portal de familia visibles con las vistas que activó el colegio. */
+function familyNavItems(portalViews) {
+  return FAMILY_NAV.filter((item) => isPortalViewOn(portalViews, item.portalView));
+}
+
+/**
+ * Portal del DOCENTE con carga restringida: 5 destinos (menú lateral en
+ * escritorio, barra inferior en móvil/tablet). Lo demás vive en «Más».
+ */
+const TEACHER_NAV = [
+  { label: 'Hoy', icon: 'home', path: '/' },
+  { label: 'Mis clases', short: 'Clases', icon: 'school', path: '/docente/clase' },
+  { label: 'Calificar', icon: 'checkCircle', path: '/docente/calificar', badge: 'toGrade' },
+  { label: 'Planificación', short: 'Planificar', icon: 'clipboard', path: '/docente/planificacion' },
+  { label: 'Más', icon: 'menu', path: '/docente/mas' },
+];
+
+/** ¿Usa el portal del docente? Docente restringido a su carga (no administrador ni coordinador). */
+function isTeacherPortalUser(user) {
+  return Boolean(user?.isRestrictedTeacher) && Boolean(user?.teachingStaffId) && !user?.isAdmin && !user?.coordinator;
+}
+
 /** Rutas de detalle que no están en el menú, para el título del Topbar. */
 const EXTRA_TITLES = [
   { prefix: '/grading/plans/', label: 'Calificaciones', parent: 'Académico' },
-  { prefix: '/portal/students/', label: 'Mi alumno', parent: 'Portal' },
+  { prefix: '/portal/students/', label: 'Más del alumno', parent: 'Portal' },
+  { prefix: '/portal/academico', label: 'Académico', parent: 'Portal' },
+  { prefix: '/docente/clase', label: 'Mis clases', parent: 'Docente' },
+  { prefix: '/docente/calificar', label: 'Calificar', parent: 'Docente' },
+  { prefix: '/docente/planificacion', label: 'Planificación', parent: 'Docente' },
+  { prefix: '/docente/mas', label: 'Más', parent: 'Docente' },
+  { prefix: '/portal/agenda', label: 'Agenda', parent: 'Portal' },
+  { prefix: '/portal/mas', label: 'Más', parent: 'Portal' },
   { prefix: '/enrollment-forms/', label: 'Diseño de planilla', parent: 'Administración' },
   { prefix: '/academics/sections/', label: 'Detalle de sección', parent: 'Académico' },
   { prefix: '/carryovers/simulator', label: 'Simulador de arrastres', parent: 'Académico' },
@@ -182,4 +233,4 @@ function homePath(ctx) {
   return first?.path || null;
 }
 
-export { NAV_SECTIONS, findRouteMeta, isNavItemVisible, navItemLabel, hasDashboard, homePath, canManageAdmissions, canManagePeriods, canUseCarryovers };
+export { NAV_SECTIONS, FAMILY_NAV, TEACHER_NAV, isTeacherPortalUser, isFamilyUser, familyNavItems, findRouteMeta, isNavItemVisible, navItemLabel, hasDashboard, homePath, canManageAdmissions, canManagePeriods, canUseCarryovers };

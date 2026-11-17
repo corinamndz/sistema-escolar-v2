@@ -48,6 +48,8 @@ const SEGMENT_MODULE = {
   'programmatic-content': 'programmatic_content',
   reviews: 'evaluation_plans', // revisión de planes y contenido (migración 058)
   grading: 'grading',
+  submissions: 'grading', // bandeja de entregas del aula virtual
+  learning: 'programmatic_content', // material de apoyo de los temas
   payments: 'payments',
   'exchange-rate': 'payments',
   notifications: 'notifications',

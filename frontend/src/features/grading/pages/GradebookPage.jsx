@@ -234,7 +234,7 @@ function AccumulatedLiteral({ scores }) {
 }
 
 /** Calificación por indicador: una nota por indicador (0 a su puntaje); la nota es la suma. */
-function IndicatorScoreModal({ activity, student, score, onClose, onSaved }) {
+export function IndicatorScoreModal({ activity, student, score, onClose, onSaved }) {
   const [values, setValues] = useState(() =>
     Object.fromEntries(activity.indicators.map((i) => [i.id, score.indicatorScores?.[i.id] ?? '']))
   );

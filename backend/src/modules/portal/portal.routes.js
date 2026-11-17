@@ -3,6 +3,9 @@ const controller = require('./portal.controller');
 const paymentAccounts = require('../payments/paymentAccounts.controller');
 const events = require('../events/event.controller');
 const appointments = require('../appointments/appointment.controller');
+const submissions = require('../submissions/submission.controller');
+const learning = require('../learning/learning.controller');
+const { submissionUpload } = require('../../middlewares/upload.middleware');
 const { authMiddleware } = require('../../middlewares/auth.middleware');
 const { tenantMiddleware } = require('../../middlewares/tenant.middleware');
 // Secciones que el colegio puede desactivar (Configuración → Vistas del representante): 403 si lo están.
@@ -35,6 +38,16 @@ router.get('/students/:studentId/recognitions', view('recognitions'), controller
 router.get('/students/:studentId/recognitions/:id/certificate', view('recognitions'), controller.getRecognitionCertificate);
 // Cronograma de evaluaciones de la sección del alumno (solo de sus representados).
 router.get('/students/:studentId/evaluations', view('evaluations'), controller.getStudentEvaluations);
+// Aula virtual (101): tareas con entrega digital, subir el archivo y descargar lo entregado.
+router.get('/students/:studentId/tasks', view('tasks'), submissions.listStudentTasks);
+router.post('/students/:studentId/tasks/:activityId/submission', view('tasks'), submissionUpload, submissions.submitTask);
+router.get('/students/:studentId/tasks/:activityId/submission/file', view('tasks'), submissions.downloadFamilyFile);
+// Aprender en casa (103): material de apoyo por materia, con progreso y "¡Lo logré!" (modo alumno).
+router.get('/students/:studentId/learning', view('learning'), learning.listStudentSubjects);
+router.get('/students/:studentId/learning/subjects/:subjectId', view('learning'), learning.getStudentSubject);
+router.get('/students/:studentId/learning/materials/:materialId/file', view('learning'), learning.downloadFamilyFile);
+router.post('/students/:studentId/learning/materials/:materialId/view', view('learning'), learning.markViewed);
+router.put('/students/:studentId/learning/materials/:materialId/complete', view('learning'), learning.setCompleted);
 // Clubes y actividades extracurriculares del alumno.
 router.get('/students/:studentId/clubs', view('clubs'), controller.getStudentClubs);
 // Cartelera de eventos del colegio (los de todo el colegio y los del grado/sección de sus hijos).

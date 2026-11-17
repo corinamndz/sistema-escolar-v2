@@ -17,6 +17,9 @@ import { useViewCurrency } from '../useViewCurrency';
 import Button from '../../../components/ui/Button';
 import { BatchCartBar, BatchPaymentDrawer, MyBatches, isBatchable, isDue, toggleInOrder } from '../components/BatchPayment';
 import { useToast } from '../../../components/ui/Toast';
+import { useAuth } from '../../../context/AuthContext';
+import { isFamilyUser } from '../../../components/layout/navigation';
+import FamilyPaymentsPage from '../family/FamilyPaymentsPage';
 
 /**
  * Vista de padres: los pagos del representante agrupados por alumno. El
@@ -32,7 +35,7 @@ import { useToast } from '../../../components/ui/Toast';
  * «Próximas» también puede marcar meses futuros para pagarlos por adelantado
  * (en orden: toggleInOrder; el backend aplica la misma regla).
  */
-function MyPaymentsPage() {
+function LegacyMyPaymentsPage() {
   const { data: rates, refetch: refetchRates } = useFetch(() => paymentsApi.currentRate(), []);
   // Moneda en que la familia quiere ver sus cuotas (se recuerda en el navegador).
   const [viewCurrency, setViewCurrency] = useViewCurrency('myPayments.viewCurrency', rates);
@@ -197,6 +200,16 @@ function MyPaymentsPage() {
       )}
     </div>
   );
+}
+
+/**
+ * «Mis pagos»: el portal de familia usa la vista nueva (resumen de cuenta,
+ * pago guiado en pasos y movimientos); quien además es personal del colegio
+ * conserva la vista de siempre.
+ */
+function MyPaymentsPage() {
+  const { user } = useAuth();
+  return isFamilyUser(user) ? <FamilyPaymentsPage /> : <LegacyMyPaymentsPage />;
 }
 
 export default MyPaymentsPage;

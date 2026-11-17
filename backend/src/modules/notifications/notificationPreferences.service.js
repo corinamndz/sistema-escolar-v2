@@ -72,6 +72,27 @@ const CATALOG = [
     defaults: { bell: true, email: false },
   },
   {
+    key: 'task_reminder',
+    label: 'Recordatorio de tarea por entregar',
+    description: 'Aviso automático (tarea diaria) unos días antes de la hora límite de cada tarea con entrega digital, solo a quienes aún no la entregan. Elige con cuánta anticipación.',
+    recipients: 'Los representantes de cada alumno que no ha entregado',
+    defaults: { bell: true, email: false },
+  },
+  {
+    key: 'task_graded',
+    label: 'Tarea calificada o devuelta',
+    description: 'Cuando el docente califica una tarea entregada en línea, o la devuelve para corregir con sus comentarios.',
+    recipients: 'Los representantes del alumno',
+    defaults: { bell: true, email: false },
+  },
+  {
+    key: 'learning_material',
+    label: 'Material de apoyo publicado',
+    description: 'Cuando el docente publica una guía, video, enlace, nota de voz o píldora en un tema. Si lo programó, el aviso sale con la tarea diaria cuando llega su hora.',
+    recipients: 'Los representantes de los alumnos del grado (secciones donde se dicta la materia)',
+    defaults: { bell: true, email: false },
+  },
+  {
     key: 'subject_carryover',
     label: 'Materias pendientes',
     description: 'Cuando se califica un momento de recuperación: si el alumno aprobó, o si se habilitó el siguiente.',
@@ -132,6 +153,8 @@ const REMINDER_SETTINGS = {
   meetingReminderDays: { column: 'meeting_reminder_days', event: 'parent_meeting', min: 0, max: 7, default: 0 },
   overdueIntervalDays: { column: 'overdue_interval_days', event: 'payment_overdue', min: 1, max: 30, default: 7 },
   overdueMaxReminders: { column: 'overdue_max_reminders', event: 'payment_overdue', min: 1, max: 10, default: 3 },
+  // Aula virtual (102): 0 = el mismo día del plazo, 1 = la víspera…
+  taskReminderDays: { column: 'task_reminder_days', event: 'task_reminder', min: 0, max: 7, default: 1 },
 };
 const SETTING_KEYS = Object.keys(REMINDER_SETTINGS);
 

@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useTenant } from '../../context/TenantContext';
 import Icon from '../ui/Icon';
 import SchoolLogo from '../ui/SchoolLogo';
-import { NAV_SECTIONS, isNavItemVisible, navItemLabel } from './navigation';
+import { NAV_SECTIONS, TEACHER_NAV, familyNavItems, isFamilyUser, isNavItemVisible, isTeacherPortalUser, navItemLabel } from './navigation';
 import { initials } from './initials';
 import { useExpandedSet } from '../../hooks/useExpandedSet';
 import { useReviewCounts } from '../../features/reviews/useReviewCounts';
@@ -22,7 +22,15 @@ function Sidebar({ collapsed, mobileOpen, onCloseMobile, onToggleCollapsed }) {
   // En el drawer móvil siempre se muestran las etiquetas, aunque en desktop esté colapsado.
   const compact = collapsed && !mobileOpen;
 
-  const sections = NAV_SECTIONS.map((section) => ({
+  // Portal de familia: un solo grupo con los 5 destinos, siempre abierto.
+  const family = isFamilyUser(user);
+  // Portal del docente: igual, un grupo con sus 5 destinos.
+  const teacherPortal = isTeacherPortalUser(user);
+  const sections = family
+    ? [{ label: 'Mi familia', items: familyNavItems(settings.portalViews) }]
+    : teacherPortal
+      ? [{ label: 'Mi día', items: TEACHER_NAV }]
+      : NAV_SECTIONS.map((section) => ({
     ...section,
     items: section.items
       .filter((item) => isNavItemVisible(item, { can, user, portalViews: settings.portalViews }))
@@ -73,7 +81,7 @@ function Sidebar({ collapsed, mobileOpen, onCloseMobile, onToggleCollapsed }) {
             <span className="sidebar__school-name" title={settings.name}>
               {settings.name}
             </span>
-            <span className="sidebar__school-sub">Panel de gestión</span>
+            <span className="sidebar__school-sub">{family ? 'Portal de familia' : teacherPortal ? 'Portal docente' : 'Panel de gestión'}</span>
           </div>
         )}
         <button type="button" className="sidebar__close" onClick={onCloseMobile} aria-label="Cerrar menú">
@@ -84,12 +92,12 @@ function Sidebar({ collapsed, mobileOpen, onCloseMobile, onToggleCollapsed }) {
       <nav className="sidebar__nav">
         {sections.map((section) => {
           // Con el menú en modo íconos no se colapsan grupos: todos los íconos a la vista.
-          const open = compact || isSectionOpen(section.label);
+          const open = compact || family || teacherPortal || isSectionOpen(section.label);
           const bodyId = `sidebar-section-${section.label.replace(/\s+/g, '-').toLowerCase()}`;
           const hasActive = section.items.some((item) => isActivePath(item.path, location.pathname));
           return (
             <div key={section.label} className={`sidebar__section ${open ? 'is-open' : 'is-closed'}`}>
-              {compact ? (
+              {compact || family || teacherPortal ? (
                 <div className="sidebar__section-label">{section.label}</div>
               ) : (
                 <button

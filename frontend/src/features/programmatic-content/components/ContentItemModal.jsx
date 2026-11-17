@@ -19,6 +19,7 @@ function ContentItemModal({ initial, pair, units, defaultUnit, onClose, onSaved 
     unit: initial?.unit || defaultUnit || '',
     topic: initial?.topic || '',
     description: initial?.description || '',
+    weekNumber: initial?.week_number ? String(initial.week_number) : '',
   });
   const { run, loading, error, fieldErrors } = useMutation(
     isEdit ? (data) => programmaticContentApi.update(initial.id, data) : (data) => programmaticContentApi.create({ ...data, gradeId: pair.gradeId, subjectId: pair.subjectId, schoolPeriodId: pair.schoolPeriodId })
@@ -31,7 +32,7 @@ function ContentItemModal({ initial, pair, units, defaultUnit, onClose, onSaved 
     e.preventDefault();
     if (!filled) return;
     try {
-      await run({ unit: form.unit.trim(), topic: form.topic.trim(), description: form.description.trim() });
+      await run({ unit: form.unit.trim(), topic: form.topic.trim(), description: form.description.trim(), weekNumber: form.weekNumber ? Number(form.weekNumber) : null });
       toast.success(isEdit ? 'Tema actualizado' : 'Tema agregado', `${form.unit.trim()} · ${form.topic.trim()}`);
       onSaved();
       onClose();
@@ -58,6 +59,9 @@ function ContentItemModal({ initial, pair, units, defaultUnit, onClose, onSaved 
           </Field>
           <Field label="Tema" error={fieldErrors.topic} required>
             <Input value={form.topic} onChange={set('topic')} maxLength={200} placeholder="Ej. Estructura celular" required />
+          </Field>
+          <Field label="Semana de clase" error={fieldErrors.weekNumber} hint="Opcional (1 a 52): ordena el material por semanas en el portal.">
+            <Input type="number" min="1" max="52" step="1" value={form.weekNumber} onChange={set('weekNumber')} placeholder="Ej. 3" />
           </Field>
           <Field label="Descripción del contenido" error={fieldErrors.description} required full hint="Los puntos que se tratarán en el tema.">
             <textarea

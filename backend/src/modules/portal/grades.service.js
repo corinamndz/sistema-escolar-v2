@@ -47,7 +47,7 @@ async function assertGuardianOfStudent(trx, tenantId, userId, studentId) {
 
 /** Mensaje para la familia cuando las calificaciones están bloqueadas por deuda. */
 const GRADES_LOCKED_MESSAGE =
-  'Acceso a detalles del alumno bloqueado por pagos pendientes. Por favor, comuníquese con administración o reporte su pago.';
+  'Las notas están en pausa por una mensualidad vencida. Se vuelven a ver en cuanto reportes el pago (no hace falta esperar la confirmación).';
 
 /**
  * Cuotas VENCIDAS del alumno: pendientes, con la fecha de vencimiento pasada

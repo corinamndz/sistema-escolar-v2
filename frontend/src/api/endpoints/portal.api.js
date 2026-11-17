@@ -44,6 +44,22 @@ const portalApi = {
   /** "He leído y acepto el plan de evaluación" → { status, last: { acknowledged_at, ip_address } } */
   acknowledgePlan: (studentId, planId) => axiosClient.post(`/portal/students/${studentId}/evaluation-plans/${planId}/acknowledge`).then((r) => r.data),
   /** Datos de pago del colegio (pago móvil y cuentas) para reportar un pago: solo los activos. */
+  /** Aula virtual: tareas con entrega digital del alumno → { tasks, totals, grades_locked }. */
+  getStudentTasks: (studentId) => axiosClient.get(`/portal/students/${studentId}/tasks`).then((r) => r.data),
+  /** Sube (o reemplaza) el archivo de una tarea. `onProgress(0..100)` opcional. */
+  submitTask: (studentId, activityId, file, onProgress) => {
+    const body = new FormData();
+    body.append('file', file);
+    return axiosClient
+      .post(`/portal/students/${studentId}/tasks/${activityId}/submission`, body, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: onProgress ? (e) => e.total && onProgress(Math.round((e.loaded / e.total) * 100)) : undefined,
+      })
+      .then((r) => r.data);
+  },
+  /** Archivo entregado: { blob, headers }. */
+  downloadTaskFile: (studentId, activityId) =>
+    axiosClient.get(`/portal/students/${studentId}/tasks/${activityId}/submission/file`, { responseType: 'blob' }).then((r) => ({ blob: r.data, headers: r.headers })),
   getPaymentAccounts: () => axiosClient.get('/portal/payment-accounts').then((r) => r.data),
 };
 

@@ -25,6 +25,12 @@ router.use('/evaluation-plans', require('../modules/evaluation-plans/evaluationP
 // Contenido programático por materia y grado, con sus actividades de evaluación.
 router.use('/programmatic-content', require('../modules/programmatic-content/programmaticContent.routes'));
 router.use('/grading', require('../modules/grading/grading.routes'));
+// Aula virtual: bandeja de entregas de tareas del docente (la familia entrega desde /portal).
+router.use('/submissions', require('../modules/submissions/submission.routes'));
+// Material de apoyo del contenido programático (docente). La familia lo ve desde /portal.
+router.use('/learning', require('../modules/learning/learning.routes'));
+// Portal del docente: sus clases, el panel «Hoy» y el enlace de clase en línea.
+router.use('/teacher', require('../modules/teacher/teacher.routes'));
 router.use('/payments', require('../modules/payments/payment.routes'));
 router.use('/exchange-rate', require('../modules/payments/exchangeRate.routes'));
 router.use('/notifications', require('../modules/notifications/notification.routes'));

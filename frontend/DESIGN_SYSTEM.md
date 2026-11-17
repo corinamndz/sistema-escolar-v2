@@ -63,6 +63,19 @@ Usa siempre la variable, nunca el valor fijo.
   derecha, la principal al final.
 - **Portal del representante**: mismos componentes que la administración, sin
   acciones de gestión.
+- **Banda de bienvenida (regla innegociable)**: el inicio de **todos** los
+  portales (administración, docente y familia) abre con
+  `<WelcomeBanner subtitle role? name? />` (`src/components/ui/WelcomeBanner.jsx`).
+  No se elimina, oculta ni rediseña, y no se reemplaza por un encabezado propio:
+  - saludo según la hora local (Buenos días / Buenas tardes / Buenas noches) +
+    nombre + 👋, en blanco y con jerarquía clara (título 24 px / 800);
+  - degradado con los colores de marca del colegio (`--color-primary` →
+    `--color-secondary`), esquinas `--radius-xl` y sombra teñida;
+  - fecha de hoy en una píldora translúcida a la derecha (debajo en el móvil);
+  - `role` = portal ("Portal de familia", "Portal docente"); `subtitle` = línea
+    institucional o de estado ("Tienes 2 pendientes…").
+  Estilos únicos en `index.css` (`.welcome*`); no se sobrescriben por pantalla.
+  Mientras la página carga, la banda se muestra igual (solo cambia el subtítulo).
 
 ## 5. Pendientes conocidos (no visibles, para ir corrigiendo)
 
